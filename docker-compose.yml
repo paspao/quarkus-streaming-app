@@ -1,0 +1,97 @@
+version: "3.8"
+services:
+  zookeeper-1:
+    image: confluentinc/cp-zookeeper:6.1.0
+    networks:
+      - stream
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 22181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+
+  kafka-1:
+    image: confluentinc/cp-kafka:6.1.0
+    networks:
+      - stream
+    depends_on:
+      - zookeeper-1
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:22181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:19092
+    ports:
+      - "19092:19092"
+
+  kafka-2:
+    image: confluentinc/cp-kafka:6.1.0
+    networks:
+      - stream
+    depends_on:
+      - zookeeper-1
+      - kafka-1
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:22181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:29092
+    ports:
+      - "29092:29092"
+
+  kafka-3:
+    image: confluentinc/cp-kafka:6.1.0
+    networks:
+      - stream
+    depends_on:
+      - zookeeper-1
+      - kafka-1
+      - kafka-2
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:22181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:39092
+
+    ports:
+      - "39092:39092"
+
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:3.27.0
+    networks:
+      - stream
+    environment:
+      KAFKA_BROKERCONNECT: "kafka-1:19092"
+      JVM_OPTS: "-Xms32M -Xmx128M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+    ports:
+      - "9000:9000"
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    healthcheck:
+      test: "curl --fail --silent http://localhost:9000/actuator/health | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  streamapp:
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile.jvm
+    depends_on:
+      - kafdrop
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - zookeeper-1
+    healthcheck:
+      test: "curl --fail --silent http://localhost:8080/q/health/ready | grep UP || exit 1"
+    networks:
+      - stream
+    ports:
+      - "8080:8080"
+
+networks:
+  stream:
