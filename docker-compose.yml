@@ -21,8 +21,7 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:22181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:19092
-    ports:
-      - "19092:19092"
+
 
   kafka-2:
     image: confluentinc/cp-kafka:6.1.0
@@ -35,8 +34,7 @@ services:
       KAFKA_BROKER_ID: 2
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:22181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:29092
-    ports:
-      - "29092:29092"
+
 
   kafka-3:
     image: confluentinc/cp-kafka:6.1.0
@@ -51,8 +49,6 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper-1:22181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:39092
 
-    ports:
-      - "39092:39092"
 
 
   kafdrop:

@@ -3,7 +3,7 @@ package it.paspaola.quarkus.dto;
 public class Fee {
 
     private String id;
-    private String scn;
+    private String ssn;
     private String name;
     private float value;
 
@@ -11,10 +11,10 @@ public class Fee {
 
     }
 
-    public Fee(String id, String scn, String name, float value) {
+    public Fee(String id, String ssn, String name, float value) {
         this();
         this.id = id;
-        this.scn = scn;
+        this.ssn = ssn;
         this.name = name;
         this.value = value;
     }
@@ -27,12 +27,12 @@ public class Fee {
         this.id = id;
     }
 
-    public String getScn() {
-        return scn;
+    public String getSsn() {
+        return ssn;
     }
 
-    public void setScn(String scn) {
-        this.scn = scn;
+    public void setSsn(String ssn) {
+        this.ssn = ssn;
     }
 
     public String getName() {

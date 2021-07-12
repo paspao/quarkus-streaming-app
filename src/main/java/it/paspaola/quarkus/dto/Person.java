@@ -8,7 +8,7 @@ import java.time.LocalDate;
 public class Person {
 
 
-    private String scn;
+    private String ssn;
     private String name;
     private String surname;
     private SEX sex;
@@ -16,10 +16,12 @@ public class Person {
     private LocalDate dateOfBirth;
     private String phoneNumber;
 
-    public Person(){}
-    public Person(String scn, String name, String surname, SEX sex, LocalDate dateOfBirth, String phoneNumber) {
+    public Person() {
+    }
+
+    public Person(String ssn, String name, String surname, SEX sex, LocalDate dateOfBirth, String phoneNumber) {
         this();
-        this.scn = scn;
+        this.ssn = ssn;
         this.name = name;
         this.surname = surname;
         this.sex = sex;
@@ -27,12 +29,12 @@ public class Person {
         this.phoneNumber = phoneNumber;
     }
 
-    public String getScn() {
-        return scn;
+    public String getSsn() {
+        return ssn;
     }
 
-    public void setScn(String scn) {
-        this.scn = scn;
+    public void setSsn(String ssn) {
+        this.ssn = ssn;
     }
 
     public String getName() {
@@ -78,7 +80,7 @@ public class Person {
     @Override
     public String toString() {
         return "Person{" +
-                "scn='" + scn + '\'' +
+                "scn='" + ssn + '\'' +
                 ", name='" + name + '\'' +
                 ", surname='" + surname + '\'' +
                 ", sex=" + sex +
