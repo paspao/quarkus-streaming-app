@@ -2,8 +2,10 @@ package it.paspaola.quarkus.streaming;
 
 import it.paspaola.quarkus.dto.DriverLicense;
 import it.paspaola.quarkus.dto.Fee;
+import it.paspaola.quarkus.dto.FeeBySsn;
 import it.paspaola.quarkus.dto.Person;
 import it.paspaola.quarkus.dto.PersonDriverLicense;
+import it.paspaola.quarkus.dto.PersonDriverLicenseFee;
 import it.paspaola.quarkus.dto.Sim;
 import it.paspaola.quarkus.dto.serde.FactorySerde;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -15,14 +17,20 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.ForeachAction;
+import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.JoinWindows;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.StreamJoined;
+import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.Stores;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +50,7 @@ public class StreamingApp {
     private final static Logger logger = LoggerFactory.getLogger(StreamingApp.class.getName());
 
     private final static String ALL = "alltogether";
+    private final static String ALL_ENHANCEMENT = "alltogether-enhancement";
     private final static String DRIVERLICENSE = "driverlicense";
     private final static String FEE = "fee";
     private final static String PERSON = "person";
@@ -61,6 +70,7 @@ public class StreamingApp {
         adminClient.createTopics(List.of(new NewTopic(SIM, 4, (short) 3)));
         adminClient.createTopics(List.of(new NewTopic(FEE, 5, (short) 3)));
         adminClient.createTopics(List.of(new NewTopic(DRIVERLICENSE, 3, (short) 3)));
+        adminClient.createTopics(List.of(new NewTopic(ALL_ENHANCEMENT, 3, (short) 3)));
         CreateTopicsResult resultAllTogether = adminClient.createTopics(List.of(new NewTopic(ALL, 4, (short) 3)));
 
         resultAllTogether.all().whenComplete((unused, throwable) -> {
@@ -78,7 +88,7 @@ public class StreamingApp {
                 ProducerRecord<String, Fee> feeProducerRecord1 = new ProducerRecord<>(FEE, "123", new Fee("123", "456", "IMU", 512));
                 ProducerRecord<String, Fee> feeProducerRecord2 = new ProducerRecord<>(FEE, "234", new Fee("234", "567", "IMU", 513));
                 ProducerRecord<String, Fee> feeProducerRecord3 = new ProducerRecord<>(FEE, "345", new Fee("345", "678", "IMU", 514));
-                ProducerRecord<String, Fee> feeProducerRecord4 = new ProducerRecord<>(FEE, "456", new Fee("456", "456", "IMU", 515));
+                ProducerRecord<String, Fee> feeProducerRecord4 = new ProducerRecord<>(FEE, "456", new Fee("456", "456", "TASI", 515));
                 ProducerRecord<String, Fee> feeProducerRecord5 = new ProducerRecord<>(FEE, "567", new Fee("567", "456", "IMU", 516));
 
                 ProducerRecord<String, Sim> simProducerRecord1 = new ProducerRecord<>(SIM, "111", new Sim("111", "TIM", "4783", "1113245768"));
@@ -124,7 +134,7 @@ public class StreamingApp {
             logger.info("Key: {}, Value: {}", key, person);
     };
 
-    @Produces
+    // @Produces
     public Topology appJoinPersonAndDriverLicense() {
 
         final KStream<String, Person> personStream = builder.stream(PERSON,
@@ -143,6 +153,61 @@ public class StreamingApp {
                 ));
 
         joined.to(ALL, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde()));
+
+        Topology build = builder.build();
+        logger.info(build.describe().toString());
+        return build;
+    }
+
+    @Produces
+    public Topology appJoinPersonAndDriverLicenseAndFee() {
+
+        final KStream<String, Person> personStream = builder.stream(PERSON,
+                Consumed.with(Serdes.String(), FactorySerde.getPersonSerde()));
+        final KStream<String, DriverLicense> driverLicenseStream = builder.stream(DRIVERLICENSE,
+                Consumed.with(Serdes.String(), FactorySerde.getDriverLicenseSerde()));
+
+        final KStream<String, Fee> feeStream = builder.stream(FEE,
+                Consumed.with(Serdes.String(), FactorySerde.getFeeSerde()));
+
+        KeyValueBytesStoreSupplier feeBySsnTableSupplier = Stores.persistentKeyValueStore("feeBySsnTableSupplier");
+
+        final Materialized<String, FeeBySsn, KeyValueStore<Bytes, byte[]>> materialized =
+                Materialized.<String, FeeBySsn>as(feeBySsnTableSupplier)
+                        .withKeySerde(Serdes.String())
+                        .withValueSerde(FactorySerde.getFeeBySsnSerde());
+
+
+        KStream<String, Person> peekStream = personStream.peek(loggingForEach);
+
+        KStream<String, PersonDriverLicense> joinedPersonDriverLicense = peekStream.join(driverLicenseStream,
+                (person, license) -> new PersonDriverLicense(person, license),
+                JoinWindows.of(Duration.of(5, ChronoUnit.MINUTES)), StreamJoined.with(
+                        Serdes.String(), /* key */
+                        FactorySerde.getPersonSerde(),   /* left value */
+                        FactorySerde.getDriverLicenseSerde()  /* right value */
+                ));
+
+
+        joinedPersonDriverLicense.to(ALL, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde()));
+
+        KStream<String, PersonDriverLicenseFee> joinedPersonDriverLicenseFee = feeStream
+                .selectKey((key, value) -> value.getSsn())
+                .groupByKey(Grouped.with(Serdes.String(), FactorySerde.getFeeSerde()))
+                .aggregate(() -> new FeeBySsn(), (key, value, aggregate) -> {
+                    aggregate.setSsn(key);
+                    aggregate.getFeeList().add(value);
+                    return aggregate;
+                }, materialized)
+                .toStream()
+                .join(joinedPersonDriverLicense,
+                        (feeBySsn, personDl) -> new PersonDriverLicenseFee(personDl.getPerson(), personDl.getDriverLicense(), feeBySsn),
+                        JoinWindows.of(Duration.of(5, ChronoUnit.MINUTES)), StreamJoined.with(
+                                Serdes.String(), /* key */
+                                FactorySerde.getFeeBySsnSerde(),   /* left value */
+                                FactorySerde.getPersonDriverLicenseSerde()  /* right value */
+                        ));
+        joinedPersonDriverLicenseFee.to(ALL_ENHANCEMENT, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseFeeSerde()));
 
         Topology build = builder.build();
         logger.info(build.describe().toString());

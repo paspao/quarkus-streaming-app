@@ -1,5 +1,9 @@
 # straming-app project
 
+[![Java CI](https://github.com/paspao/quarkus-streaming-app/actions/workflows/build.yml/badge.svg)](https://github.com/paspao/quarkus-streaming-app/actions/workflows/build.yml)
+
+Support project for the article https://paspaola.it/2021/05/21/QuarkusStreamingApp.html
+
 ## Build
 
 ```shell script

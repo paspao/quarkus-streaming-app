@@ -7,8 +7,10 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.paspaola.quarkus.dto.DriverLicense;
 import it.paspaola.quarkus.dto.Fee;
+import it.paspaola.quarkus.dto.FeeBySsn;
 import it.paspaola.quarkus.dto.Person;
 import it.paspaola.quarkus.dto.PersonDriverLicense;
+import it.paspaola.quarkus.dto.PersonDriverLicenseFee;
 import it.paspaola.quarkus.dto.Sim;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
@@ -95,6 +97,34 @@ public class FactorySerde {
             @Override
             public Deserializer<Fee> deserializer() {
                 return new FeeDeserializer();
+            }
+        };
+    }
+
+    public static Serde<FeeBySsn> getFeeBySsnSerde() {
+        return new Serde<>() {
+            @Override
+            public Serializer<FeeBySsn> serializer() {
+                return new FeeBySsnSerializer();
+            }
+
+            @Override
+            public Deserializer<FeeBySsn> deserializer() {
+                return new FeeBySsnDeserializer();
+            }
+        };
+    }
+
+    public static Serde<PersonDriverLicenseFee> getPersonDriverLicenseFeeSerde() {
+        return new Serde<>() {
+            @Override
+            public Serializer<PersonDriverLicenseFee> serializer() {
+                return new PersonDriverLicenseFeeSerializer();
+            }
+
+            @Override
+            public Deserializer<PersonDriverLicenseFee> deserializer() {
+                return new PersonDriverLicenseFeeDeserializer();
             }
         };
     }
@@ -221,6 +251,36 @@ public class FactorySerde {
         }
     }
 
+    public static final class FeeBySsnSerializer implements Serializer<FeeBySsn> {
+
+
+        @Override
+        public byte[] serialize(String topic, FeeBySsn fee) {
+            byte[] res = null;
+            try {
+                res = objectMapper.writeValueAsBytes(fee);
+            } catch (JsonProcessingException e) {
+                logger.error("ERROR", e);
+            }
+            return res;
+        }
+    }
+
+    public static final class FeeBySsnDeserializer implements Deserializer<FeeBySsn> {
+
+
+        @Override
+        public FeeBySsn deserialize(String topic, byte[] bytes) {
+            FeeBySsn fee = null;
+            try {
+                fee = objectMapper.readValue(bytes, FeeBySsn.class);
+            } catch (IOException e) {
+                logger.error("ERROR", e);
+            }
+            return fee;
+        }
+    }
+
     public static final class SimSerializer implements Serializer<Sim> {
 
 
@@ -248,6 +308,36 @@ public class FactorySerde {
                 logger.error("ERROR", e);
             }
             return sim;
+        }
+    }
+
+    public static final class PersonDriverLicenseFeeSerializer implements Serializer<PersonDriverLicenseFee> {
+
+
+        @Override
+        public byte[] serialize(String topic, PersonDriverLicenseFee fee) {
+            byte[] res = null;
+            try {
+                res = objectMapper.writeValueAsBytes(fee);
+            } catch (JsonProcessingException e) {
+                logger.error("ERROR", e);
+            }
+            return res;
+        }
+    }
+
+    public static final class PersonDriverLicenseFeeDeserializer implements Deserializer<PersonDriverLicenseFee> {
+
+
+        @Override
+        public PersonDriverLicenseFee deserialize(String topic, byte[] bytes) {
+            PersonDriverLicenseFee fee = null;
+            try {
+                fee = objectMapper.readValue(bytes, PersonDriverLicenseFee.class);
+            } catch (IOException e) {
+                logger.error("ERROR", e);
+            }
+            return fee;
         }
     }
 }
