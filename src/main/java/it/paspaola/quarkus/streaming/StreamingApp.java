@@ -18,9 +18,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.ForeachAction;
 import org.apache.kafka.streams.kstream.JoinWindows;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.StreamJoined;
 import org.slf4j.Logger;
@@ -119,23 +119,22 @@ public class StreamingApp {
 
     final StreamsBuilder builder = new StreamsBuilder();
 
-    final Predicate<String, Person> loggingPredicate = (key, person) -> {
+    final ForeachAction<String, Person> loggingForEach = (key, person) -> {
         if (person != null)
             logger.info("Key: {}, Value: {}", key, person);
-        return true;
     };
 
     @Produces
-    public Topology app() {
+    public Topology appJoinPersonAndDriverLicense() {
 
-        final KStream<String, Person> streamPerson = builder.stream(PERSON,
+        final KStream<String, Person> personStream = builder.stream(PERSON,
                 Consumed.with(Serdes.String(), FactorySerde.getPersonSerde()));
-        final KStream<String, DriverLicense> streamDriverLicense = builder.stream(DRIVERLICENSE,
+        final KStream<String, DriverLicense> driverLicenseStream = builder.stream(DRIVERLICENSE,
                 Consumed.with(Serdes.String(), FactorySerde.getDriverLicenseSerde()));
 
-        KStream<String, Person> filtered = streamPerson.filter(loggingPredicate);
+        KStream<String, Person> peekStream = personStream.peek(loggingForEach);
 
-        KStream<String, PersonDriverLicense> joined = filtered.join(streamDriverLicense,
+        KStream<String, PersonDriverLicense> joined = peekStream.join(driverLicenseStream,
                 (person, license) -> new PersonDriverLicense(person, license),
                 JoinWindows.of(Duration.of(5, ChronoUnit.MINUTES)), StreamJoined.with(
                         Serdes.String(), /* key */
