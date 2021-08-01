@@ -41,6 +41,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -75,6 +76,8 @@ public class StreamingApp {
 
         resultAllTogether.all().whenComplete((unused, throwable) -> {
             if (throwable == null) {
+                List<String> carType = Collections.singletonList("CAR");
+                List<String> motorbikeAndCarType = List.of("CAR", "MOTORBIKE");
                 KafkaProducer kafkaPersonProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getPersonSerde().serializer());
                 KafkaProducer kafkaFeeProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getFeeSerde().serializer());
                 KafkaProducer kafkaSimProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getSimSerde().serializer());
@@ -96,10 +99,11 @@ public class StreamingApp {
                 ProducerRecord<String, Sim> simProducerRecord3 = new ProducerRecord<>(SIM, "333", new Sim("333", "WIND", "4785", "1113245788"));
                 ProducerRecord<String, Sim> simProducerRecord4 = new ProducerRecord<>(SIM, "444", new Sim("444", "TRE", "4786", "1113245798"));
 
-                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord1 = new ProducerRecord<>(DRIVERLICENSE, "456", new DriverLicense("456", "CAR", "1213245768"));
-                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord2 = new ProducerRecord<>(DRIVERLICENSE, "567", new DriverLicense("567", "CAR", "2213245768"));
-                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord3 = new ProducerRecord<>(DRIVERLICENSE, "678", new DriverLicense("678", "CAR", "3213245768"));
-                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord4 = new ProducerRecord<>(DRIVERLICENSE, "789", new DriverLicense("789", "CAR", "4213245768"));
+                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord1 = new ProducerRecord<>(DRIVERLICENSE, "456", new DriverLicense("456", carType, "1213245768"));
+                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord2 = new ProducerRecord<>(DRIVERLICENSE, "456", new DriverLicense("456", motorbikeAndCarType, "1213245768"));
+                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord3 = new ProducerRecord<>(DRIVERLICENSE, "567", new DriverLicense("567", carType, "2213245768"));
+                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord4 = new ProducerRecord<>(DRIVERLICENSE, "678", new DriverLicense("678", carType, "3213245768"));
+                ProducerRecord<String, DriverLicense> driverLicenseProducerRecord5 = new ProducerRecord<>(DRIVERLICENSE, "789", new DriverLicense("789", carType, "4213245768"));
 
                 kafkaPersonProducer.send(personProducerRecord1);
                 kafkaPersonProducer.send(personProducerRecord2);
@@ -121,6 +125,7 @@ public class StreamingApp {
                 kafkaDriverLicenseProducer.send(driverLicenseProducerRecord2);
                 kafkaDriverLicenseProducer.send(driverLicenseProducerRecord3);
                 kafkaDriverLicenseProducer.send(driverLicenseProducerRecord4);
+                kafkaDriverLicenseProducer.send(driverLicenseProducerRecord5);
             }
         });
 
@@ -134,7 +139,7 @@ public class StreamingApp {
             logger.info("Key: {}, Value: {}", key, person);
     };
 
-    // @Produces
+    //@Produces
     public Topology appJoinPersonAndDriverLicense() {
 
         final KStream<String, Person> personStream = builder.stream(PERSON,
@@ -167,16 +172,6 @@ public class StreamingApp {
         final KStream<String, DriverLicense> driverLicenseStream = builder.stream(DRIVERLICENSE,
                 Consumed.with(Serdes.String(), FactorySerde.getDriverLicenseSerde()));
 
-        final KStream<String, Fee> feeStream = builder.stream(FEE,
-                Consumed.with(Serdes.String(), FactorySerde.getFeeSerde()));
-
-        KeyValueBytesStoreSupplier feeBySsnTableSupplier = Stores.persistentKeyValueStore("feeBySsnTableSupplier");
-
-        final Materialized<String, FeeBySsn, KeyValueStore<Bytes, byte[]>> materialized =
-                Materialized.<String, FeeBySsn>as(feeBySsnTableSupplier)
-                        .withKeySerde(Serdes.String())
-                        .withValueSerde(FactorySerde.getFeeBySsnSerde());
-
 
         KStream<String, Person> peekStream = personStream.peek(loggingForEach);
 
@@ -187,6 +182,16 @@ public class StreamingApp {
                         FactorySerde.getPersonSerde(),   /* left value */
                         FactorySerde.getDriverLicenseSerde()  /* right value */
                 ));
+
+        final KStream<String, Fee> feeStream = builder.stream(FEE,
+                Consumed.with(Serdes.String(), FactorySerde.getFeeSerde()));
+
+        KeyValueBytesStoreSupplier feeBySsnTableSupplier = Stores.persistentKeyValueStore("feeBySsnTableSupplier");
+
+        final Materialized<String, FeeBySsn, KeyValueStore<Bytes, byte[]>> materialized =
+                Materialized.<String, FeeBySsn>as(feeBySsnTableSupplier)
+                        .withKeySerde(Serdes.String())
+                        .withValueSerde(FactorySerde.getFeeBySsnSerde());
 
 
         joinedPersonDriverLicense.to(ALL, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde()));
