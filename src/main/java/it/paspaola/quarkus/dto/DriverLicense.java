@@ -1,19 +1,21 @@
 package it.paspaola.quarkus.dto;
 
+import java.util.List;
+
 public class DriverLicense {
 
     private String id;
-    private String type;
+    private List<String> typeList;
     private String licenseNumber;
 
     public DriverLicense() {
 
     }
 
-    public DriverLicense(String id, String type, String licenseNumber) {
+    public DriverLicense(String id, List<String> typeList, String licenseNumber) {
         this();
         this.id = id;
-        this.type = type;
+        this.typeList = typeList;
         this.licenseNumber = licenseNumber;
     }
 
@@ -25,12 +27,12 @@ public class DriverLicense {
         this.id = id;
     }
 
-    public String getType() {
-        return type;
+    public List<String> getTypeList() {
+        return typeList;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setTypeList(List<String> typeList) {
+        this.typeList = typeList;
     }
 
     public String getLicenseNumber() {
