@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.annotations.QuarkusMain;
+import jakarta.ws.rs.Produces;
 
-import javax.ws.rs.Produces;
 
 @QuarkusMain
 public class Start {
