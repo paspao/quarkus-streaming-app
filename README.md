@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/paspao/quarkus-streaming-app/actions/workflows/build.yml/badge.svg)](https://github.com/paspao/quarkus-streaming-app/actions/workflows/build.yml)
 
-Support project for the article https://paspaola.it/2021/05/21/QuarkusStreamingApp.html
+Support project for the article https://paspaola.it/2023/05/21/QuarkusStreamingApp.html
 There are two topologies:
 
 * the first one commented at line 142 of the StreamingApp.java class

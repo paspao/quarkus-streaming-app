@@ -50,4 +50,14 @@ public class Fee {
     public void setValue(float value) {
         this.value = value;
     }
+
+    @Override
+    public String toString() {
+        return "Fee{" +
+                "id='" + id + '\'' +
+                ", ssn='" + ssn + '\'' +
+                ", name='" + name + '\'' +
+                ", value=" + value +
+                '}';
+    }
 }

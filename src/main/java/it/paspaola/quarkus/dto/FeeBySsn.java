@@ -28,4 +28,12 @@ public class FeeBySsn {
     public void setFeeList(List<Fee> feeList) {
         this.feeList = feeList;
     }
+
+    @Override
+    public String toString() {
+        return "FeeBySsn{" +
+                "ssn='" + ssn + '\'' +
+                ", feeList=" + feeList +
+                '}';
+    }
 }

@@ -60,7 +60,7 @@ public class StreamingApp {
             props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka-1:19092");
             props.put(ProducerConfig.CLIENT_ID_CONFIG, "producer");
             props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-            props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, FactorySerde.PersonSerializer.class);
+            props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
             AdminClient adminClient = KafkaAdminClient.create(props);
             adminClient.createTopics(List.of(new NewTopic(PERSON, 3, (short) 3)));
@@ -102,10 +102,6 @@ public class StreamingApp {
                     ProducerRecord<String, DriverLicense> driverLicenseProducerRecord4 = new ProducerRecord<>(DRIVERLICENSE, "678", new DriverLicense("678", carType, "3213245768"));
                     ProducerRecord<String, DriverLicense> driverLicenseProducerRecord5 = new ProducerRecord<>(DRIVERLICENSE, "789", new DriverLicense("789", carType, "4213245768"));
 
-                    kafkaPersonProducer.send(personProducerRecord1);
-                    kafkaPersonProducer.send(personProducerRecord2);
-                    kafkaPersonProducer.send(personProducerRecord3);
-                    kafkaPersonProducer.send(personProducerRecord4);
 
                     kafkaFeeProducer.send(feeProducerRecord1);
                     kafkaFeeProducer.send(feeProducerRecord2);
@@ -123,6 +119,12 @@ public class StreamingApp {
                     kafkaDriverLicenseProducer.send(driverLicenseProducerRecord3);
                     kafkaDriverLicenseProducer.send(driverLicenseProducerRecord4);
                     kafkaDriverLicenseProducer.send(driverLicenseProducerRecord5);
+
+                    kafkaPersonProducer.send(personProducerRecord1);
+                    kafkaPersonProducer.send(personProducerRecord2);
+                    kafkaPersonProducer.send(personProducerRecord3);
+                    kafkaPersonProducer.send(personProducerRecord4);
+
                 }
             });
         }
@@ -135,6 +137,11 @@ public class StreamingApp {
     final ForeachAction<String, Person> loggingForEach = (key, person) -> {
         if (person != null)
             logger.info("Key: {}, Value: {}", key, person);
+    };
+
+    final ForeachAction<String, PersonDriverLicenseFee> loggingForEachEnhancement = (key, personDriverLicense) -> {
+        if (personDriverLicense != null)
+            logger.info("Enhancement Key: {}, Value: {}", key, personDriverLicense);
     };
 
     //@Produces
@@ -180,7 +187,7 @@ public class StreamingApp {
                         FactorySerde.getPersonSerde(),
                         FactorySerde.getDriverLicenseSerde()
                 ));
-        joinedPersonDriverLicense.to(ALL, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde()));
+
 
         final KStream<String, Fee> feeStream = builder.stream(FEE,
                 Consumed.with(Serdes.String(), FactorySerde.getFeeSerde()));
@@ -194,20 +201,21 @@ public class StreamingApp {
 
 
         KTable<String, FeeBySsn> feeBySSnTable = feeStream
-                .selectKey((key, value) -> value.getSsn(), Named.as("fee-by-ssn-select-key"))
+                .selectKey((key, value) -> value.getSsn())
                 .groupByKey(Grouped.with(Serdes.String(), FactorySerde.getFeeSerde()))
-                //.groupBy((key, value) -> value.getSsn())
                 .aggregate(FeeBySsn::new, (key, value, aggregate) -> {
                     aggregate.setSsn(key);
                     aggregate.getFeeList().add(value);
                     return aggregate;
                 }, Named.as("fee-by-ssn-table"), materialized);
 
-        KStream<String, PersonDriverLicenseFee> joinedPersonDriverLicenseFee = joinedPersonDriverLicense.join(feeBySSnTable,
-                (readOnlyKey, personDriverLicense, feeBySsn) -> new PersonDriverLicenseFee(personDriverLicense.getPerson(), personDriverLicense.getDriverLicense(), feeBySsn));
+        KStream<String, PersonDriverLicenseFee> joinedPersonDriverLicenseFee = builder.stream(ALL, Consumed.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde())).join(feeBySSnTable,
+                (readOnlyKey, personDriverLicense, feeBySsn) ->
+                        new PersonDriverLicenseFee(personDriverLicense.getPerson(), personDriverLicense.getDriverLicense(), feeBySsn)
+        );
 
-
-        joinedPersonDriverLicenseFee.to(ALL_ENHANCEMENT, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseFeeSerde()));
+        joinedPersonDriverLicense.to(ALL, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde()));
+        joinedPersonDriverLicenseFee.peek(loggingForEachEnhancement).to(ALL_ENHANCEMENT, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseFeeSerde()));
 
         Topology build = builder.build();
         logger.info(build.describe().toString());
