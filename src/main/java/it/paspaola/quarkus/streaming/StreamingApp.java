@@ -75,10 +75,10 @@ public class StreamingApp {
                 if (throwable == null) {
                     List<String> carType = Collections.singletonList("CAR");
                     List<String> motorbikeAndCarType = List.of("CAR", "MOTORBIKE");
-                    KafkaProducer kafkaPersonProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getPersonSerde().serializer());
-                    KafkaProducer kafkaFeeProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getFeeSerde().serializer());
-                    KafkaProducer kafkaSimProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getSimSerde().serializer());
-                    KafkaProducer kafkaDriverLicenseProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getDriverLicenseSerde().serializer());
+                    KafkaProducer<String, Person> kafkaPersonProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getPersonSerde().serializer());
+                    KafkaProducer<String, Fee> kafkaFeeProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getFeeSerde().serializer());
+                    KafkaProducer<String, Sim> kafkaSimProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getSimSerde().serializer());
+                    KafkaProducer<String, DriverLicense> kafkaDriverLicenseProducer = new KafkaProducer<>(props, Serdes.String().serializer(), FactorySerde.getDriverLicenseSerde().serializer());
 
                     ProducerRecord<String, Person> personProducerRecord1 = new ProducerRecord<>(PERSON, "456", new Person("456", "Pasquale", "Paola", Person.SEX.M, LocalDate.parse("19810625", dateOfBirthFormatter), "1113245768"));
                     ProducerRecord<String, Person> personProducerRecord2 = new ProducerRecord<>(PERSON, "567", new Person("567", "Giacomo", "Matteotti", Person.SEX.M, LocalDate.parse("19810626", dateOfBirthFormatter), "1113245778"));
@@ -176,9 +176,9 @@ public class StreamingApp {
         KStream<String, PersonDriverLicense> joinedPersonDriverLicense = peekStream.join(driverLicenseStream,
                 (person, license) -> new PersonDriverLicense(person, license),
                 JoinWindows.of(Duration.of(5, ChronoUnit.MINUTES)), StreamJoined.with(
-                        Serdes.String(), /* key */
-                        FactorySerde.getPersonSerde(),   /* left value */
-                        FactorySerde.getDriverLicenseSerde()  /* right value */
+                        Serdes.String(),
+                        FactorySerde.getPersonSerde(),
+                        FactorySerde.getDriverLicenseSerde()
                 ));
         joinedPersonDriverLicense.to(ALL, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde()));
 
@@ -196,6 +196,7 @@ public class StreamingApp {
         KTable<String, FeeBySsn> feeBySSnTable = feeStream
                 .selectKey((key, value) -> value.getSsn(), Named.as("fee-by-ssn-select-key"))
                 .groupByKey(Grouped.with(Serdes.String(), FactorySerde.getFeeSerde()))
+                //.groupBy((key, value) -> value.getSsn())
                 .aggregate(FeeBySsn::new, (key, value, aggregate) -> {
                     aggregate.setSsn(key);
                     aggregate.getFeeList().add(value);
