@@ -40,4 +40,13 @@ public class PersonDriverLicenseFee {
     public void setFeeBySsn(FeeBySsn feeBySsn) {
         this.feeBySsn = feeBySsn;
     }
+
+    @Override
+    public String toString() {
+        return "PersonDriverLicenseFee{" +
+                "person=" + person +
+                ", driverLicense=" + driverLicense +
+                ", feeBySsn=" + feeBySsn +
+                '}';
+    }
 }
