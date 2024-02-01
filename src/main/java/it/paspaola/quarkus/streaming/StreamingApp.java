@@ -182,10 +182,11 @@ public class StreamingApp {
                     return aggregate;
                 }, Named.as("fee-by-ssn-table"), materialized);
 
-        KStream<String, PersonDriverLicenseFee> joinedPersonDriverLicenseFee = builder.stream(ALL, Consumed.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde())).join(feeBySSnTable,
-                (readOnlyKey, personDriverLicense, feeBySsn) ->
-                        new PersonDriverLicenseFee(personDriverLicense.getPerson(), personDriverLicense.getDriverLicense(), feeBySsn)
-        );
+        KStream<String, PersonDriverLicenseFee> joinedPersonDriverLicenseFee = builder.stream(ALL, Consumed.with(Serdes.String(), FactorySerde.getPersonDriverLicenseSerde()))
+                .join(feeBySSnTable,
+                        (readOnlyKey, personDriverLicense, feeBySsn) ->
+                                new PersonDriverLicenseFee(personDriverLicense.getPerson(), personDriverLicense.getDriverLicense(), feeBySsn)
+                );
 
 
         joinedPersonDriverLicenseFee.peek(loggingForEachEnhancement).to(ALL_ENHANCEMENT, Produced.with(Serdes.String(), FactorySerde.getPersonDriverLicenseFeeSerde()));
